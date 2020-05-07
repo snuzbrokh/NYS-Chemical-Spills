@@ -19,3 +19,7 @@ sites = storage$Site.Type.Name %>% unique() %>% sort()
 localities = storage$Locality %>% unique() %>% sort()
 tank_locations = storage$Tank.Location %>% unique()
 counties = storage$County.Name %>% unique() %>% sort()
+
+# Dates of Facility Installation
+min_date = as.Date(min(storage$Install.Date),"%Y-%m-%d")
+max_date = as.Date(max(storage$Install.Date),"%Y-%m-%d")

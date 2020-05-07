@@ -42,6 +42,19 @@ function(input, output) {
     # Precalculate the breaks we'll need for the two histograms
     centileBreaks <- hist(plot = FALSE, storage$Rank, breaks = 20)$breaks
     
+    output$cumgrowth <- renderPlot({
+        locsInBounds() %>% 
+            group_by(Install.Date) %>% 
+            summarize(sum_ = sum(Capacity.in.Gallons)) %>% 
+            mutate(n = cumsum(sum_)/1e3) %>% 
+            ggplot(aes(x = Install.Date, y = n)) +
+            geom_area() +
+            labs(x='Install Date',
+                 y='Capacity (kGal)') +
+            scale_fill_brewer(palette='Set1') +
+            theme_bw() +
+            theme(legend.key=element_blank())
+    })
     output$histCentile <- renderPlot({
         # If no locations are in view, don't plot
         if (nrow(locsInBounds()) == 0)
@@ -49,11 +62,11 @@ function(input, output) {
         
         hist(locsInBounds()$Rank,
              breaks = centileBreaks,
-             main = "Material Capacity Distribution (visible area)",
+             main = "Material Distribution",
              xlab = "Percentile",
              xlim = range(storage$Rank),
              col = '#00DD00',
-             border = 'white')
+             border = 'black')
     })
     
     output$topLoc <- renderPlot({
@@ -77,7 +90,8 @@ function(input, output) {
     filteredData = reactive({
         matdata %>% 
             filter(Material.Name %in% input$materials) %>% 
-            filter(Site.Status.Name %in% input$`site-status`)
+            filter(Site.Status.Name %in% input$`site-status`) %>% 
+            filter(Install.Date < input$plot_date)
     })
     
     observe({
@@ -99,20 +113,7 @@ function(input, output) {
     #                          fillOpacity = 0.1)
     # })
     # Cumulative Plot of Material Growth over Time in NYS
-    output$cumgrowth <- renderPlot({
-        locsInBounds() %>% 
-            filter(Material.Name %in% input$materials) %>% 
-            group_by(Install.Date) %>% 
-            summarize(sum_ = sum(Capacity.in.Gallons)) %>% 
-            mutate(n = cumsum(sum_)) %>% 
-            ggplot(aes(x = Install.Date, y = n)) +
-            geom_area() +
-            labs(x='Install Date',
-                 y='Capacity') +
-            scale_fill_brewer(palette='Set1') +
-            theme_bw() +
-            theme(legend.key=element_blank())
-    })
+
     
     # # Barplot of Material by County
     # output$histogram <- renderPlot({
