@@ -2,6 +2,7 @@ library(DT)
 library(shiny)
 library(leaflet)
 library(ggplot2)
+library(scales)
 
 mapbox_url = 'https://api.mapbox.com/styles/v1/snuzbrokh/ck9txosrr0ij41iqmmcgby9q7/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1Ijoic251emJyb2toIiwiYSI6ImNrOXR4Y3V5ejBkYjYzZG96aWlidW11NmsifQ.ZNl03PeSqd0DQwur0AuM3A'
 # Leaflet bindings are a bit slow; for now we'll just sample to compensate
@@ -10,8 +11,9 @@ data = storage[sample.int(nrow(storage), 10000),]
 
 matdata = data[order(data$Rank),]
 
-function(input, output) {
+function(input, output, session) {
     
+    ################ Interactive Map & Functions ################ ################ ################ ######
     output$map <- renderLeaflet({
         leaflet(nys) %>%
             addTiles(urlTemplate = mapbox_url) %>%
@@ -26,8 +28,18 @@ function(input, output) {
                 onClick=JS("function(btn, map){ map.locate({setView: true});}")))
         })
     
-    # A reactive expression that returns the set of locations that are
-    # in bounds right now
+    
+    observe({
+        leafletProxy("map", data = filteredData()) %>%
+            clearMarkers() %>%
+            addCircleMarkers(lng = ~Lon, lat = ~Lat, radius = ~sqrt(Capacity.in.Gallons)/10, 
+                             popup = ~Program.Facility.Name,
+                             stroke=FALSE, color = "white",
+                             opacity = 1,
+                             fillColor = 'green')
+    })
+    
+    # A reactive expression that returns the set of locations that are in bounds right now
     locsInBounds <- reactive({
         req(input$map_bounds)
         bounds <- input$map_bounds
@@ -39,40 +51,80 @@ function(input, output) {
                    Lon >= lngRng[1] & Lon <= lngRng[2])
     })
     
+    filteredData = reactive({
+        matdata %>% 
+            filter(`Material Family` %in% input$material_family_select) %>% 
+            filter(Site.Status.Name %in% input$`site-status`) %>% 
+            filter(Install.Date < input$plot_date)
+        
+        
+    })
+    ################ Interactive Map Plots ################ ################ ################ ##########
+    
+    output$plot_county_spills <- renderPlotly({
+        spills %>% 
+            filter(County == input$county_select) %>% 
+            group_by(`Material Name`) %>%
+            summarise(total_spilled = sum(Quantity)) %>%
+            arrange(desc(total_spilled)) %>%
+            slice(input$result_range[1]:input$result_range[2]) %>% 
+            county_spills()
+    })
+    
+    output$plot_spill_sources <- renderPlotly({
+        spills %>% 
+            filter(County == input$county_select) %>% 
+            group_by(`Source`,`Material Family`) %>% 
+            summarise(total_spilled = sum(Quantity)) %>% 
+            filter(log(total_spilled) > 1) %>% 
+            arrange(desc(total_spilled)) %>%
+            spill_sources()
+    })
+    
+    observeEvent(input$material_family_select, {
+        choices = 
+            storage %>% 
+            filter(`Material Family` == input$material_family_select) %>%
+            select(Material.Name) %>% 
+            unique() 
+        updatePickerInput(session = session, inputId = 'materials', choices = sort(choices[[1]]))
+    })
+    
     # Precalculate the breaks we'll need for the two histograms
     centileBreaks <- hist(plot = FALSE, storage$Rank, breaks = 20)$breaks
     
     output$cumgrowth <- renderPlot({
+        
         locsInBounds() %>% 
             group_by(Install.Date) %>% 
-            summarize(sum_ = sum(Capacity.in.Gallons)) %>% 
-            mutate(n = cumsum(sum_)/1e3) %>% 
-            ggplot(aes(x = Install.Date, y = n)) +
-            geom_area() +
-            labs(x='Install Date',
+            summarise(sum_ = sum(Capacity.in.Gallons)) %>% 
+            mutate(cumsum_ = cumsum(sum_)/1e3) %>% 
+            ggplot(aes(x = Install.Date, y = cumsum_)) +
+            geom_area(aes(fill="#663399")) +
+            labs(x='Date',
                  y='Capacity (kGal)') +
             scale_fill_brewer(palette='Set1') +
             theme_bw() +
             theme(legend.key=element_blank())
+        
     })
     output$histCentile <- renderPlot({
         # If no locations are in view, don't plot
         if (nrow(locsInBounds()) == 0)
             return(NULL)
         
-        hist(locsInBounds()$Rank,
-             breaks = centileBreaks,
+        hist(locsInBounds()$Capacity.in.Gallons,
              main = "Material Distribution",
              xlab = "Percentile",
              xlim = range(storage$Rank),
-             col = '#00DD00',
+             col = "#663399",
              border = 'black')
     })
     
     output$topLoc <- renderPlot({
         
         locsInBounds() %>% 
-            # summarize(total = sum(Capacity.in.Gallons)) %>%
+            # summarise(total = sum(Capacity.in.Gallons)) %>%
             # top_n(5,total) %>% 
             # semi_join(filteredData(), by = 'Site.Type.Name') %>% 
             ggplot(aes(x=reorder(Site.Type.Name,Capacity.in.Gallons, function(x) sum(x)), y=sum(Capacity.in.Gallons))) + 
@@ -86,23 +138,13 @@ function(input, output) {
                 theme(legend.key=element_blank())
             
     })
+
     
-    filteredData = reactive({
-        matdata %>% 
-            filter(Material.Name %in% input$materials) %>% 
-            filter(Site.Status.Name %in% input$`site-status`) %>% 
-            filter(Install.Date < input$plot_date)
-    })
+
     
-    observe({
-        leafletProxy("map", data = filteredData()) %>%
-            clearMarkers() %>%
-            addCircleMarkers(lng = ~Lon, lat = ~Lat, radius = ~sqrt(Capacity.in.Gallons)/10, 
-                       popup = ~Program.Facility.Name,
-                       stroke=FALSE, color = "white",
-                       opacity = 1,
-                       fillColor = 'green')
-    })
+    ################ Region Plots  ################ ################ ################
+    
+    
     
     # Observe to Change circle plot of Material
     # observeEvent(input$materials, {

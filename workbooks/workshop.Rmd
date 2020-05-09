@@ -6,46 +6,35 @@ output: html_notebook
 \
 ```{r}
 library(tidyverse)
-storage <- data.frame(read_csv('./data/storage_clean.csv'))
+storage <- read_csv('../data/storage_clean.csv')
+storage = storage %>% select(-Tank.Number,-NYSDEC.Region,-Program.Number)
 storage = drop_na(storage)
 ```
 
-```{r}
-storage = storage %>% select(-X1,-X1_1)
-```
-```{r}
-storage = storage %>% distinct()
-```
-
-
-```{r}
-storage = storage %>% 
-  mutate(Locality = tolower(Locality)) %>% 
-  left_join(counties, 
-            by = c('County.FIPS'="County FIPS")) %>% 
-  select(-`City Name`,-`Town Name`,-`Village Name`,-`Municipality`)
-```
-
-```{r}
-storage$Tank.Type %>% unique()
-```
-```{r}
-
-```
 
 ```{r}
 Caps = function(x) {
   s = strsplit(x, " ")[[1]]
-  return(paste(toupper(substring(s,1,1)), substring(s,2), sep="", collapse=" "))
+  txt = paste(toupper(substring(s,1,1)), substring(s,2), sep="", collapse=" ")
+  return(txt[[1]])
 }
 ```
 
 ```{r}
-vec = c("bronx","new york city")
+vec = c("bronx","new york city", "bronx city")
 caps = Vectorize(Caps)
 
-v = vec %>% caps()
+vec = vec %>% caps()
+v = storage$Locality %>% caps()
+
 ```
+```{r}
+str(vec)
+attributes(vec)
+vec[names]
+```
+
+
 
 ```{r}
 storage$Locality %>% mutate(Locality = caps(Locality))
@@ -120,7 +109,7 @@ write_csv(storage,'./data/storage_clean.csv')
 ```{r}
 top5Chems = storage %>% 
   group_by(Material.Name) %>% 
-  summarize(total = sum(Capacity.in.Gallons)) %>% 
+  summarise(total = sum(Capacity.in.Gallons)) %>% 
   top_n(5,total)
 
 storageFiltered = semi_join(storage, top5Chems, by = 'Material.Name')
@@ -173,27 +162,57 @@ storageFiltered %>%
 ```{r}
 topChems = storage %>% 
   group_by(Material.Name) %>% 
-  summarize(total = sum(Capacity.in.Gallons)) %>% 
+  summarise(total = sum(Capacity.in.Gallons)) %>% 
   slice(20,total)
 
 storageFiltered = semi_join(storage, topChems, by = 'Material.Name')
 ```
 
-```{r}
 
+```{r}
+storage
 
 ```
 
 
-
 ```{r}
+
 storage %>% 
   filter(Material.Name=="chlorine") %>% 
   group_by(Install.Date) %>% 
-  summarize(sum_ = sum(Capacity.in.Gallons)) %>% 
-  mutate(n = cumsum(sum_)) %>% 
-  ggplot(aes(x = Install.Date, y = n)) +
-  geom_area() +
+  summarise(sum_ = sum(Capacity.in.Gallons)) %>% 
+  bind_rows(closed) %>% 
+  arrange(Install.Date) %>% 
+  mutate(cumsum_ = cumsum(sum_))
+```
+
+```{r}
+total
+```
+
+
+```{r}
+material_name = '#6 fuel oil'
+closed = storage %>% 
+  filter(Material.Name == material_name) %>% 
+  group_by(Close.Date) %>% 
+  summarise(sum_ = -sum(Capacity.in.Gallons)) %>% 
+  rename(., 'Date' = 'Close.Date')
+
+
+total = storage %>% 
+  filter(Material.Name==material_name) %>% 
+  group_by(Install.Date) %>% 
+  rename(., 'Date' = 'Install.Date') %>% 
+  summarise(sum_ = sum(Capacity.in.Gallons)) %>% 
+  bind_rows(closed) %>% 
+  arrange(Date) %>% 
+  mutate(cumsum_ = cumsum(sum_)/1e6)
+
+
+total %>% 
+  ggplot(aes(x = Date, y = cumsum_)) +
+  geom_step() +
   labs(title='Facility Install Date and Capacity',
        x='Install Date',
        y='Capacity') +
@@ -227,7 +246,67 @@ storageFiltered %>%
 ```
 
 ```{r}
+library(Hmisc)
+library(psych)
+
+storage_num = storage %>% select(Capacity.in.Gallons, Percent)
+describe(storage_num)
+```
+```{r}
+centiles = hist(storage$Rank, breaks = 20)$breaks
+
+par(mfrow=c(1,2))
+hist(storage$Rank,
+     breaks = centiles,
+     main = "Material Distribution",
+     xlab = "Percentile",
+     xlim = range(storage$Rank),
+     col = '#00DD00',
+     border = 'black')
+
+hist(storage$Capacity.in.Gallons,
+     breaks = 20)
+
+actual = storage$Capacity.in.Gallons * storage$Percent
+boxplot(storage$Rank)
+boxplot(storage$Percent)
+```
+## Bivariate Graphical
+```{r}
+fig <- function(width, heigth){
+     options(repr.plot.width = width, repr.plot.height = heigth)
+}
+
+material_name = "gasoline"
 storage %>% 
-  filter(Rank < 1e-2) 
+  filter(Material.Name == material_name) %>% 
+  ggplot(aes(x = Tank.Location, y = log(Capacity.in.Gallons))) +
+  geom_violin() +
+  coord_flip()
+
+options(repr.plot.width = 14, repr.plot.height = 200)
+storage %>% 
+  filter(Material.Name == material_name) %>% 
+  group_by(County.Name) %>% 
+  summarise(total = log(sum(Capacity.in.Gallons))) %>% 
+  ggplot(aes(x = reorder(County.Name,total), y = total)) +
+  geom_point() +
+  coord_flip()
+```
+```{r}
+fig(102,100)
+storage %>% 
+  filter(Material.Name == material_name) %>% 
+  group_by(County.Name) %>% 
+  summarise(total = log(sum(Capacity.in.Gallons))) %>% 
+  ggplot(aes(x = reorder(County.Name,total), y = total)) +
+  geom_point() +
+  theme()
+```
+
+
+
+```{r}
+
 ```
 

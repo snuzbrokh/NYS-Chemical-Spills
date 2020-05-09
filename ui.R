@@ -19,7 +19,7 @@ if(!require(shinythemes)) install.packages("shinythemes", repos = "http://cran.u
 
 
 bootstrapPage(
-  navbarPage(theme = shinytheme("flatly"),collapsible=TRUE, "Storage", id="nav",
+  navbarPage(theme = shinytheme("slate"),collapsible=TRUE, "Storage", id="nav",
            
            tabPanel("Interactive map",
                     div(class="outer",
@@ -39,9 +39,14 @@ bootstrapPage(
                                                          selected = c("Active","Inactive","Unregulated/Closed"),
                                                          inline = TRUE
                                                          ),
+                                      
+                                      pickerInput("material_family_select", "Material Family:",   
+                                                  choices = material_family, 
+                                                  selected = c("Petroleum"),
+                                                  multiple = FALSE),
                                       pickerInput(
                                         'materials', 'Materials', 
-                                        choices = materials, 
+                                        choices = NULL, 
                                         options = list(`actions-box` = TRUE, 
                                                        `none-selected-text` = "Please make a selection!",
                                                        dropupAuto = FALSE,
@@ -65,6 +70,32 @@ bootstrapPage(
                     )
            )
            ),
+           
+           tabPanel("County Plots",
+                    sidebarLayout(
+                      sidebarPanel(
+                        span(tags$i(h6("Investigation of chemical spills by County")), style="color:#045a8d"),
+                        
+                        sliderInput("result_range", "Number of Results:", 
+                                    min = 0, max = 50, value = c(0,10)),
+                        
+                        pickerInput("county_select", "County:",   
+                                    choices = counties, 
+                                    selected = c("Albany"),
+                                    multiple = FALSE)
+                        
+                        
+                      ),
+                      mainPanel(
+                        tabsetPanel(
+                          tabPanel("County Spills", plotlyOutput("plot_county_spills")),
+                          tabPanel("Spill Sources", plotlyOutput("plot_spill_sources"))
+                        )
+                      )
+                    )
+                    
+                    
+                    ),
            
            # tabPanel("Plots",
            #          sidebarLayout(
