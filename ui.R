@@ -16,12 +16,44 @@ if(!require(shinydashboard)) install.packages("shinydashboard", repos = "http://
 if(!require(shinythemes)) install.packages("shinythemes", repos = "http://cran.us.r-project.org")
 
 
+
+# logifySlider javascript function
+JS.logify <-
+  "
+// function to logify a sliderInput
+function logifySlider (sliderId, sci = false) {
+  if (sci) {
+    // scientific style
+    $('#'+sliderId).data('ionRangeSlider').update({
+      'prettify': function (num) { return ('10<sup>'+num+'</sup>'); }
+    })
+  } else {
+    // regular number style
+    $('#'+sliderId).data('ionRangeSlider').update({
+      'prettify': function (num) { return (Math.pow(10, num)); }
+    })
+  }
+}"
+# call logifySlider for each relevant sliderInput
+JS.onload <-
+  "
+// execute upon document loading
+$(document).ready(function() {
+  // wait a few ms to allow other scripts to execute
+  setTimeout(function() {
+    // include call for each slider
+    logifySlider('spill_range', sci = false)
+  }, 5)})
+"
+
 bootstrapPage(
   navbarPage(theme = shinytheme("spacelab"),collapsible=TRUE, "Chemical Spills and Facilities in NYS", id="nav",
            
            tabPanel("Interactive map",
                     div(class="outer",
                         tags$head(includeCSS("styles.css")),
+                        tags$head(tags$script(HTML(JS.logify))),
+                        tags$head(tags$script(HTML(JS.onload))),
                         tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
                         leafletOutput("map",width="100%",height="100%"),
                         
@@ -57,9 +89,8 @@ bootstrapPage(
                                       actionButton("show-spills", "Show Spills"),
                                       actionButton("clear_map", "Clear Map"),
                                       
-                                      
                                       sliderInput("spill_range", "Spill Size Range (Gal):", 
-                                                  min = 0, max = 1e6, step = 1e3, value = c(1,1e4))
+                                                  min = 0, max = 8, step = 1, value = c(1,4))
                     )
                     )
            ),

@@ -44,7 +44,6 @@ decs = storage$`DEC.Region` %>% unique() %>% sort()
 sources = spills$Source_ %>% unique() %>% sort()
 spill_counties = spills$County %>% unique() %>% sort()
 
-
 ################ Interactive Map Plots ################ ################ ################ ##########
 colors = c('Greenhouse Gas'="#005300",
            'Petroleum'="black",

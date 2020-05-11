@@ -37,7 +37,7 @@ function(input, output, session) {
             
             leafletProxy("map", data = data) %>%
                 clearMarkers() %>%
-                addCircleMarkers(lng = ~Lon, lat = ~Lat, radius = ~sqrt(Quantity)/10, 
+                addCircleMarkers(lng = ~Lon, lat = ~Lat, radius = ~log(Quantity), 
                                  stroke=TRUE, color = "green",
                                  label = ~label,
                                  labelOptions = labelOptions(direction = "bottom",
@@ -63,8 +63,8 @@ function(input, output, session) {
                 return(NULL)
             data = spillInBounds()
             leafletProxy("map", data = data) %>%
-                addCircleMarkers(lng = ~Lon, lat = ~Lat, radius = ~sqrt(Quantity)/10, 
-                                 stroke=TRUE, color = ~pal(Material.Family),
+                addCircleMarkers(lng = ~Lon, lat = ~Lat, radius = ~log(Quantity), 
+                                 stroke=TRUE, color = 'red',
                                  label = ~label,
                                  labelOptions = labelOptions(direction = "bottom",
                                                              style = list(
@@ -73,7 +73,7 @@ function(input, output, session) {
                                                                  "font-style" = "bold",
                                                                  "font-size" = "18px"
                                                              )),
-                                 fillColor = "#000000")
+                                 fillColor = ~pal(Material.Family))
         })
     })
     
@@ -129,7 +129,7 @@ function(input, output, session) {
         spills %>% 
             filter(Material.Family %in% input$material_family_select) %>% 
             filter(Material %in% input$material_name_select) %>% 
-            filter(Quantity <= input$spill_range[2] & Quantity >= input$spill_range[1]) %>% 
+            filter(Quantity <= 10^input$spill_range[2] & Quantity >= 10^input$spill_range[1]) %>% 
             #filter(`Spill Date` <= input$spill_date[2] & `Spill Date` >= input$spill_date[1]) %>% 
             sample_n(., ifelse(n() < 2e3, n(), 2e3))
         
