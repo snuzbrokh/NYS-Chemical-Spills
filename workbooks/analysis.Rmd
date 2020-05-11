@@ -9,26 +9,29 @@ library(Hmisc)
 library(statmod)
 ```
 
-```{r}
-allLower <- function(x) {
-  x = gsub("(^|[[:space:]])([[:alpha:]])",
-           "\\1\\L\\2",
-           x,
-           perl = TRUE)
-  return(x)
-}
-firstUp <- function(x) {
-  str_sub(x, 1,1) <- tolower(str_sub(x, 1,1))
-  return(x)
-}
 
-allLower('boork city')
+### Read in Files
+```{r}
+spills_clean = read_csv("../data/spills_clean.csv")
+
+spills_clean %>% 
+  select_if(function(x) any(is.na(x))) %>% 
+  summarise_each(funs(sum(is.na(.))))
+
+#spills_clean = spills_clean %>% drop_na()
+```
+
+```{r}
+storage_clean = read_csv("../data/storage_clean.csv")
+```
+
+```{r}
+storage_clean %>% select(Tank.Location) %>% unique()
 ```
 
 
 
-
-
+## Define Useful Cleaning Functions
 ```{r}
 clean_date_str = function(date_str) {
   mdy = mdy(date_str)
@@ -62,52 +65,65 @@ clean_text_col = function(txt) {
   txt = gsub("\\s+", " ", str_trim(txt))
   return(txt)
 }
-```
-
-```{r}
-spills$Locality = spills$Locality %>% tolower() %>% toTitleCase()
-
-spills$`Program Facility Name`= spills$`Program Facility Name` %>% tolower() %>% toTitleCase()
-
-spills$`Street 1` = spills$`Street 1` %>% tolower() %>% toTitleCase()
+library(lubridate)
 ```
 
 
+## Cleaning 
 
 ```{r}
-spills_clean = read_csv("../data/spills_clean.csv")
-spills_clean = spills_clean %>% select(-`Street 2`,-`ZIP Code`,-Waterbody)
+spills_clean$`Spill Date` = clean_date_str(spills_clean$`Spill Date`)
+spills_clean$`Received Date` = clean_date_str(spills_clean$`Received Date`)
+spills_clean$`Close Date` = clean_date_str(spills_clean$`Close Date`)
+
+storage_clean$`Install Date` = clean_date_str(storage_clean$`Install Date`)
+storage_clean$`Close Date` = clean_date_str(storage_clean$`Close Date`)
+storage_clean$`Expiration Date` = clean_date_str(storage_clean$`Expiration Date`)
+
+
+```
+
+## Generate Report Lag for Spill Data
+```{r}
+spills_clean = spills_clean %>% 
+  mutate('Report Lag' = as.numeric(difftime(`Received Date`,`Spill Date`,units = 'days')),
+         'Case Lag' = as.numeric(difftime(`Close Date`,`Spill Date`,units = 'days')))
+  
 ```
 
 ```{r}
-spills_clean %>% 
-  filter(Units == 'Gallons') %>% 
-  filter(`Material Family` == 'Petroleum') %>% 
-  group_by(`Material Name`) %>% 
-  summarise(sum(Quantity))
-```
-
-## Change lbs to gallons using approximate factor of 1/6
-```{r}
-spills_clean %>% 
-  filter(Units == 'Pounds' )
-```
-
-```{r}
-
-sum(is.na(spills_clean))
-```
-
-```{r}
-spills_clean %>% 
-  select_if(function(x) any(is.na(x))) %>% 
-  summarise_each(funs(sum(is.na(.))))
-
-spills_clean = spills_clean %>% drop_na()
+storage_clean %>% rename(
+  "Program.Type"="Program Type",
+  "Site.Type"="Site Type Name", 
+  "Facility.Name"="Program Facility Name", 
+  'Address'="Address 1", 
+  'ZIP'="ZIP Code",
+  "DEC.Region"=`NYSDEC Region`,
+  'Tank.Location'=`Tank Location`,
+  'Tank.Status'=`Tank Status`,
+  "Install.Date"=`Install Date`,
+  "Quantity"=`Capacity in Gallons`,
+  "Tank.Type"=`Tank Type`,
+  "Close.Date" = `Close Date`,
+  "Material"=`Material Name`,
+  "Exp.Date" = `Expiration Date`,
+  "Site.Status" = `Site Status Name`
+)
 ```
 
 ```{r}
-colnames(spills_clean)
+storage_clean %>% select(Tank.Status) %>% unique()
+```
+
+```{r}
+library(tidyverse)
+storage_clean = storage_clean %>%
+  mutate('label' = paste0(Facility.Name,', Tank: ',Tank.Status,", ", Material))
+```
+
+```{r}
+spills_clean = spills_clean %>%
+  mutate('label' = paste0(format(`Spill Date`,'%b %d, %Y'),': ',Source,' Spill of ',Quantity,' Gal of ',Material))
 ```
 
 
@@ -149,51 +165,112 @@ spills_clean %>%
   unique()
 ```
 
+
+
 ```{r}
-spills_clean$County %>% unique() %>% sort()
+petrols = spills_clean %>% filter(`Material Family` == 'Petroleum') %>% select(`Material Name`) %>% unique()
+
+petchem = spills_clean %>% filter(`Material Family` == 'Petrochemical') %>% select(`Material Name`) %>% unique()
+
+commodity = spills_clean %>% filter(`Material Family` == 'Commodity Chemical') %>% select(`Material Name`) %>% unique()
+
+hazard = spills_clean %>% filter(`Material Family` == 'Hazardous Material') %>% select(`Material Name`) %>% unique()
+
+green = spills_clean %>% filter(`Material Family` == 'Greenhouse Gas') %>% select(`Material Name`) %>% unique()
+
+
+```
+
+
+
+
+```{r}
+
+colnames(spills_clean)
+spills_clean$Waterbody = spills_clean$Waterbody %>% replace(is.na(.),'N/A')
 ```
 
 
 ```{r}
-spills %>%
-  mutate(Locality = gsub(".*New City.*", "Manhattan", Locality,perl=TRUE)) 
+storage_clean = storage_clean %>% 
+  semi_join(spills, by = c('Material' = 'Material Name'))
+
+spills_clean = spills_clean %>% 
+  semi_join(storage_clean, by = c('County'))
 ```
 
 
 ```{r}
+storage_clean$`DEC Region` = as.factor(storage_clean$`DEC Region`)
+spills_clean$`DEC Region` = as.factor(spills_clean$`DEC Region`)
+```
 
-spills = spills %>% filter(Quantity > 0)
+```{r}
+spills_clean %>% select(Source) %>% unique()
 
-# spills = spills %>% 
-#   filter(!(`Source` %in% c('Missing Code in Old Data - Must be fixed','Unknown')))
+
+spills_clean = spills_clean %>% mutate('Source_' = case_when(
+  Source == 'Tank Truck' ~ "Vehicle",
+  Source == 'Institutional, Educational, Gov., Other' ~ "Municipal",
+  Source == 'Railroad Car' ~ "Vehicle",
+  Source == 'Gasoline Station or other PBS Facility' ~ "Petroleum Storage",
+  Source == 'Commercial Vehicle' ~ "Vehicle",
+  Source == 'Private Dwelling' ~ "Other",
+  Source == 'Commercial/Industrial' ~ "Industrial",
+  Source == 'Unknown' ~ "Other",
+  Source == 'Non Major Facility > 1,100 gal' ~ "Petroleum Storage",
+  Source == 'Vessel' ~ "Vehicle",
+  Source == 'Major Facility (MOSF) > 400,000 gal' ~ "Petroleum Storage",
+  Source == 'Passenger Vehicle' ~ "Vehicle",
+  Source == 'Missing Code in Old Data - Must be fixed' ~ "Other",
+  Source == 'Transformer' ~ "Municipal",
+  Source == 'Airport/Aircraft' ~ "Vehicle",
+  Source == 'Chemical Bulk Storage Facility' ~ "Chemical Storage"
+))
+```
+```{r}
+
+spills_clean = rename(spills_clean,
+                      "Contributing.Factor"  = "Contributing Factor" ,
+                      "Facility.Name" = "Program Facility Name",
+                      "DEC.Region" = "DEC Region"
+                      )
+colnames(spills_clean)
+```
+
+```{r}
+spills_clean = spills_clean %>% rename(
+    "Material" = "Material Name"
+  )
+  
 ```
 
 
+```{r}
+library(tools)
+
+```
+
+```{r}
+storage_clean$Address = toTitleCase(tolower(storage_clean$Address))
+storage_clean$Locality = toTitleCase(tolower(storage_clean$Locality))
+storage_clean$Material = toTitleCase(tolower(storage_clean$Material))
+```
+
+```{r}
+spills_clean$Material = toTitleCase(tolower(spills_clean$Material))
+```
+
+
+
+### Write to directory
 ```{r}
 write_csv(spills_clean, '../data/spills_clean.csv')
+write_csv(storage_clean, '../data/storage_clean.csv')
 ```
 
 
-
-```{r}
-
-storage %>% left_join(., spills_clean, by=c("Material.Name" = "Materialhttps://cran.r-project.org/package=sampling Name"))
-```
-
-```{r}
-spills %>% 
-  filter(`Material Family` == 'Petroleum') %>% 
-  filter(Quantity > 10) %>% count()
-```
-
-```{r}
-spills %>% 
-  select(`Contributing Factor`) %>% unique()
-```
-
-
-
-### Great Summary Graph
+### Visualizations
 ```{r}
 colours = c("Petroleum" = colors[1], 
             "Greenhouse Gas" = colors[2], 
@@ -246,167 +323,142 @@ county_spills %>%
 
 
 ```{r}
-spills = spills %>% filter(Quantity > 0)
-spills = spills %>% mutate(spill_Rank = percent_rank(Quantity))
+library(scales)
+g = monthly_spills %>% ggplot(aes(x = month, y= count)) +
+  geom_point() + facet_wrap(~year) 
+  labs(title = 'Chemical Spills in Albany',
+    y='Number of Spills',
+       x='Month') +
+  scale_x_discrete(labels=month.abb)
+
+g
+```
+
+```{r}
+ganim = g + transition_time(year) + labs(title = "Year: {frame_time}")
+animate(ganim, fps=10)
+```
+```{r}
+g + transition_time(year) + labs(title = "Year: {frame_time}")
+```
+
+## Analysis of County Data Spills based on Year and Month
+```{r}
+spills %>% 
+  mutate(month = month(`Spill Date`), year = year(`Spill Date`)) %>% 
+  group_by(County, year, month) %>% 
+  summarise(num_spills = n())
+  
+```
+
+### Analysis by County
+```{r}
+county_name = 'Albany'
+
+# Facility Closures
+facility_closures = storage %>% 
+  filter(County.Name==county_name) %>% 
+  select(Close.Date) %>% 
+  mutate('year_mon'= format(as.Date(Close.Date), "%Y-%m")) %>% 
+  #rename("Date" = 'Close.Date') %>% 
+  group_by(year_mon) %>% 
+  #group_by(year,month) %>% 
+  summarise(closures = n(), mean_closures = closures/30)
+
+num_spills = spills %>% 
+  filter(County==county_name) %>% 
+  mutate('year_mon' = format(as.Date(`Spill Date`), "%Y-%m")) %>% 
+  #rename("Date" = 'Spill Date') %>% 
+  group_by(year_mon) %>% 
+  #group_by(year, month) %>% 
+  summarize(spills = n(), mean_spills = spills/30)
+
 ```
 
 
 ```{r}
-storage_t %>% 
-  group_by(Material.Name) %>% 
-  summarise(tot = sum(Capacity.in.Gallons)) %>% 
-  filter(tot > 1e4) %>%  select(Material Na)
-```
-```{r}
-storage_t %>% 
-  filter(!(Material.Name == 'zinc') 
+closures_and_spills = facility_closures %>% full_join(., num_spills, by="year_mon")
 ```
 
+```{r}
+closures_and_spills_year = closures_and_spills %>%
+  mutate('year' = substring(year_mon,1,4)) %>% 
+  group_by(year) %>% 
+  summarise(closures = sum(closures, na.rm = TRUE), spills= sum(spills, na.ram=TRUE))
 
+```
 
 ```{r}
-storage_t = storage_t %>% filter(!(Material.Name %in% c('other','empty')))
-storage_t %>% select(Material.Name, `Material Family`) %>% arrange(`Material Family`) %>% unique()
+str(closures_and_spills_year)
 ```
 
 
 ```{r}
-petrols = spills_clean %>% filter(`Material Family` == 'Petroleum') %>% select(`Material Name`) %>% unique()
-hazards = spills_clean %>% filter(`Material Family` == 'Hazardous Materials') %>% select(`Material Name`) %>% unique()
-other = spills_clean %>% filter(`Material Family` == 'Other') %>% select(`Material Name`) %>% unique()
-```
 
-```{r}
-petrols = storage_t %>% filter(`Material Family` == 'Petroleum') %>% select(`Material.Name`) %>% unique()
-
-petchem = storage_t %>% filter(`Material Family` == 'Petrochemical') %>% select(`Material.Name`) %>% unique()
-
-commodity = storage_t %>% filter(`Material Family` == 'Commodity Chemical') %>% select(`Material.Name`) %>% unique()
-
-hazard = storage_t %>% filter(`Material Family` == 'Hazardous Material') %>% select(`Material.Name`) %>% unique()
-
-green = storage_t %>% filter(`Material Family` == 'Greenhouse Gas') %>% select(`Material.Name`) %>% unique()
-
-
+closures_and_spills_year %>% 
+  ggplot(aes(x = year, group=2)) + 
+  geom_path(aes(y = closures)) + 
+  geom_path(aes(y = spills, col = "blue")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_x_date(breaks = 10)
 ```
 
 
 ```{r}
-spills_clean = spills_clean %>% mutate('Material Family' = case_when(
-  `Material Name` %in% petrols[[1]] ~ "Petroleum",
-  `Material Name` %in% hazard[[1]] ~ "Hazardous Material",
-  `Material Name` %in% petchem[[1]] ~ "Petrochemical",
-  `Material Name` %in% commodity[[1]] ~ "Commodity Chemical",
-  `Material Name` %in% green[[1]] ~ "Greenhouse Gas",
-))
+storage %>% 
+  filter(County.Name==county_name) %>% 
+  mutate('year_mon'= format(as.Date(Close.Date), "%Y-%m")) %>% 
+  #rename("Date" = 'Close.Date') %>% 
+  group_by(Close.Date) %>% 
+  mutate(num = n()) %>% 
+  select(year_mon, num) %>% 
+  group_by(year_mon) %>% 
+  summarize(mean = mean(num))
 ```
 
 
 
 
+## Total Closures
 ```{r}
-storage_t = storage %>% mutate('Material Family' = case_when(
-  Material.Name %in% petrols[[1]] ~ "Petroleum",
-  Material.Name %in% hazards[[1]] ~ "Hazardous Material",
-  
-  
-  Material.Name == 'ethylene glycol' ~ "Commodity Chemical",
-  Material.Name == 'methanol' ~ "Commodity Chemical",
-  Material.Name == 'toluene' ~ "Commodity Chemical",
-  Material.Name == 'p-nitrotoluene' ~ "Commodity Chemical",
-  Material.Name == 'white caustic' ~ "Commodity Chemical",
-  
-  
-  Material.Name == 'propylene glycol, allyl ether' ~ "Commodity Chemical",
-  Material.Name == 'fluosilicic acid' ~ "Commodity Chemical",
-  
-  Material.Name == 'diethylene glycol' ~ "Commodity Chemical",
-  Material.Name == 'ethanol' ~ "Commodity Chemical",
-  
-  Material.Name == '#1 fuel oil' ~ "Petroleum",
-  Material.Name == '1,1,1-Trichloroethane(TCA)' ~ "Greenhouse Gas",
-  Material.Name == '1,1,2-trichloro-1,2,2-triflouroethane' ~ "Greenhouse Gas",
-  Material.Name == '1,2-dichloro-1,1,2,2-tetrafluoroethane' ~ "Greenhouse Gas",
-  
-  Material.Name == 'benzene' ~ "Petrochemical",
-  Material.Name == 'benzene,1-methylethyl-' ~ "Petrochemical",
-  Material.Name == 'benzo(b)fluoranthene' ~ "Petrochemical",
-  Material.Name == 'benzotrichloride' ~ "Petrochemical",
-  Material.Name == 'benzoyl chloride' ~ "Petrochemical",
-  Material.Name == 'butadiene' ~ "Petrochemical",
-  Material.Name == 'pseudocumene' ~ "Petrochemical",
-  
-  Material.Name == 'aluminum sulfate' ~ "Commodity Chemical",
-  Material.Name == 'adipic acid' ~ "Commodity Chemical",
-  Material.Name == 'acetone' ~ "Commodity Chemical",
-  Material.Name == '2-propanone' ~ "Commodity Chemical",
-  Material.Name == '2-propenoic acid, 2-methyl-, methyl ester' ~ "Commodity Chemical",
-  Material.Name == 'acetic acid' ~ "Commodity Chemical",
-  Material.Name == 'acetic anhydride' ~ "Commodity Chemical",
-  Material.Name == 'ammonia' ~ "Commodity Chemical",
-  Material.Name == 'ammonium acetate' ~ "Commodity Chemical",
-  Material.Name == 'ammonium bicarbonate' ~ "Commodity Chemical",
-  Material.Name == 'ammonium bisulfite' ~ "Commodity Chemical",
-  Material.Name == 'ammonium chloride' ~ "Commodity Chemical",
-  Material.Name == 'ammonium fluoborate' ~ "Commodity Chemical",
-  Material.Name == 'ammonium hydroxide' ~ "Commodity Chemical",
-  Material.Name == 'ammonium silicofluoride' ~ "Commodity Chemical",
-  Material.Name == 'ammonium sulfamate' ~ "Commodity Chemical",
-  Material.Name == 'ammonium thiocyanate' ~ "Commodity Chemical",
-  Material.Name == 'ammonium thiosulfate' ~ "Commodity Chemical",
-  Material.Name == 'aniline' ~ "Commodity Chemical",
-  Material.Name == 'chlorine' ~ "Commodity Chemical",
-  Material.Name == 'caustic soda' ~ "Commodity Chemical",
-  Material.Name == 'butyl acetate' ~ "Commodity Chemical",
-  Material.Name == 'caustic potash' ~ "Commodity Chemical",
-  Material.Name == 'caustic soda' ~ "Commodity Chemical",
-  
-  
-  Material.Name == 'chlorobenzene' ~ "Commodity Chemical",
-  Material.Name == 'chlorodifluoromethane' ~ "Greenhouse Gas",
-  Material.Name == 'chloroethane' ~ "Commodity Chemical",
-  Material.Name == 'chromic acetate' ~ "Commodity Chemical",
-  Material.Name == 'chromic sulfate' ~ "Commodity Chemical",
-  Material.Name == 'chromium' ~ "Commodity Chemical",
-  
-  Material.Name == 'chromous chloride' ~ "Commodity Chemical",
-  Material.Name == 'clarified oil (resale/redistribute)' ~ "Petroleum",
-  Material.Name == 'coal tar pitch volatiles' ~ "Petrochemical",
-  Material.Name == 'copper' ~ "Commodity Chemical",
-  Material.Name == 'cumene' ~ "Petrochemical",
-  
-  
-  Material.Name == 'cupric sulfate' ~ "Commodity Chemical",
-  Material.Name == 'cyclohexane' ~ "Commodity Chemical",
-  Material.Name == 'cyclohexanone' ~ "Commodity Chemical",
-  Material.Name == 'cyclohexylamine' ~ "Commodity Chemical",
-  Material.Name == 'DEG' ~ "Hazardous Material",
-  Material.Name == 'dibenzofuran' ~ "Petrochemical",
-  
-  
-  Material.Name == 'hydrogen peroxide' ~ "Commodity Chemical",
-  Material.Name == 'hydrogen chloride' ~ "Commodity Chemical",
-  Material.Name == 'hydrochloric acid' ~ "Commodity Chemical",
-  Material.Name == 'muriatic acid' ~ "Commodity Chemical",
-  Material.Name == 'lead' ~ "Commodity Chemical",
-  Material.Name == 'hexane' ~ "Petrochemical",
-  
-  
-  Material.Name == 'MEK' ~ "Commodity Chemical",
-  Material.Name == 'MDI (methylene diphenyl diisocyanate)' ~ "Commodity Chemical",
-  Material.Name == 'phosphoric acid' ~ "Commodity Chemical",
-  Material.Name == 'sodium' ~ "Commodity Chemical",
-  Material.Name == 'sulfuric acid' ~ "Commodity Chemical",
-  Material.Name == 'used oil (heating)' ~ "Petroleum",
-  Material.Name == 'waste oil' ~ "Petroleum",
-  Material.Name == 'zinc' ~ "Commodity Chemical",
-  
-  Material.Name %in% other[[1]] ~ "Other",
-  TRUE ~ "Hazardous Material"
-))
+# Facility Closures
+facility_closures = storage %>% 
+  select(Close.Date) %>% 
+  mutate('year_mon'= format(as.Date(Close.Date), "%Y-%m")) %>% 
+  #rename("Date" = 'Close.Date') %>% 
+  group_by(year_mon) %>% 
+  #group_by(year,month) %>% 
+  summarise(closures = n(), mean_closures = closures/30)
+
+num_spills = spills %>% 
+  mutate('year_mon' = format(as.Date(`Spill Date`), "%Y-%m")) %>% 
+  #rename("Date" = 'Spill Date') %>% 
+  group_by(year_mon) %>% 
+  #group_by(year, month) %>% 
+  summarize(spills = n(), mean_spills = spills/30)
+
+closures_and_spills = facility_closures %>% full_join(., num_spills, by="year_mon")
+
+
+closures_and_spills_year = closures_and_spills %>%
+  mutate('year' = substring(year_mon,1,4)) %>% 
+  group_by(year) %>% 
+  summarise(closures = sum(closures, na.rm = TRUE), spills= sum(spills, na.ram=TRUE))
+
+
+closures_and_spills_year %>% 
+  ggplot(aes(x = year, group=2)) + 
+  geom_path(aes(y = closures)) + 
+  geom_path(aes(y = spills, col = "blue")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 ```{r}
-write_csv(storage_t, '../data/storage_clean.csv')
+spills %>% 
+  group_by(Material.Family) %>% 
+  ggplot(aes(Material.Family,log(Quantity))) +
+  geom_violin(scale="area", fill='#c4200e') + stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="green")
+  
 ```
 

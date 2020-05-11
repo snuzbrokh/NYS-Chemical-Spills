@@ -3,42 +3,116 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-\
 ```{r}
+library(lubridate)
 library(tidyverse)
-storage <- read_csv('../data/storage_clean.csv')
-storage = storage %>% select(-Tank.Number,-NYSDEC.Region,-Program.Number)
-storage = drop_na(storage)
-```
 
-
-```{r}
-Caps = function(x) {
-  s = strsplit(x, " ")[[1]]
-  txt = paste(toupper(substring(s,1,1)), substring(s,2), sep="", collapse=" ")
-  return(txt[[1]])
+clean_date_str = function(date_str) {
+  mdy = mdy(date_str)
+  ymd = ymd(date_str)
+  
+  if(is.na(mdy)){
+    if(is.na(ymd)){
+      return(NA)
+    }
+    else {return(ymd)}
+  }
+  else {return(mdy)}
 }
+
+# fmt_df_dates = function(df) {
+#   df = df %>% mutate('START.DATE' = clean_data_str(START.DATE), 'END.DATE' = clean_data_str(END.DATE))
+#   return(df)
+
+clean_text_col = function(txt) {
+  # Remove all chars not letters or spaces
+  txt = gsub("[^[:alnum:]#()-]", " ", txt)
+  
+  # Change all chars to lower
+  txt = tolower(txt)
+  
+  # Remove other
+  txt = gsub("other", "", txt)
+  
+  # Replace all multi space with single space
+  # Remove all white space in begin and end
+  txt = gsub("\\s+", " ", str_trim(txt))
+  return(txt)
+}
+
+  storage_clean = read_csv("../data/raw_data.csv")
+  storage_clean = select(storage_clean, -c('Program Number','Location 1','Address 2','Tank Number','NYS Municipal Boundaries','New York Zip Codes','Counties'))
+  
+  storage_clean = storage_clean %>% rename(
+    "Program.Type"="Program Type",
+    "Site.Type"="Site Type Name", 
+    "Facility.Name"="Program Facility Name", 
+    'Address'="Address 1", 
+    'ZIP'="ZIP Code",
+    "DEC.Region"=`NYSDEC Region`,
+    'Tank.Location'=`Tank Location`,
+    'Tank.Status'=`Tank Status`,
+    "Install.Date"=`Install Date`,
+    "Quantity"=`Capacity in Gallons`,
+    "Tank.Type"=`Tank Type`,
+    "Close.Date" = `Close Date`,
+    "Material"=`Material Name`,
+    "Exp.Date" = `Expiration Date`,
+    "Site.Status" = `Site Status Name`
+  )
+  
+  
+  # Date Clean
+  storage_clean$`Install.Date` = clean_date_str(storage_clean$`Install.Date`)
+  storage_clean$`Close.Date` = clean_date_str(storage_clean$`Close.Date`)
+  storage_clean$`Exp.Date` = clean_date_str(storage_clean$`Exp.Date`)
+  
+  
+  
+  storage_clean = storage_clean %>% 
+    mutate(Material = gsub("kerosene [#1 fuel oil] (on-site consumption)", "#1 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("kerosene [#1 fuel oil] (resale/redistribute)", "#1 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#2 fuel oil (on-site consumption)", "#2 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#2 fuel oil (resale/redistribute)", "#2 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#4 fuel oil (on-site consumption)", "#4 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#4 fuel oil (resale/redistribute)", "#4 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#5 fuel oil (on-site consumption)", "#5 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#5 fuel oil (resale/redistribute)", "#5 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#6 fuel oil (on-site consumption)", "#6 fuel oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("#6 fuel oil (resale/redistribute)", "#6 fuel oil", Material,ignore.case = F, fixed = T)) %>%
+    mutate(Material = gsub("gasoline/ethanol", "ethanol", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("Diesel (E-Gen)", "diesel", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("used oil (heating, on-site consumption)", "used oil (heating)", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("waste oil/used oil", "waste oil", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("Biodiesel (E-Gen)", "biodiesel", Material,ignore.case = F, fixed = T)) %>% 
+    mutate(Material = gsub("biodiesel (heating, on-site consumption)", "biodiesel", Material,ignore.case = F, fixed = T)) %>% 
+    
+    mutate(Site.Type = gsub("Municipality (Incl. Waste Water Treatment Plants, Utilities, Swimming Pools, etc.)", "Municipality", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Religious Building (Church, Synagogue, Mosque, Temple, etc.)", "Relgious Building", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Manufacturing (Other than Chemical)/Processing", "Non-Chemical Manufacturing/Processing", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Unknown", "Other", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Apartment Building/Office Building", "Apartment/Office Building", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Other Wholesale/Retail Sales", "Retail Gasoline Sales", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Auto Service/Repair (No Gasoline Sales)", "Auto Service", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Storage Terminal/Petroleum Distributor", "Petroleum Storage/Distribution", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Hospital/Nursing Home/Health Care", "Hospital/Health Care", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Airport/Airline/Air Taxi", "Airport", Site.Type,ignore.case = F, fixed = T)) %>% 
+    mutate(Site.Type = gsub("Trucking/Transportation/Fleet Operation", "Trucking/Transport", Site.Type,ignore.case = F, fixed = T)) %>% 
+    
+    mutate(Tank.Location = gsub("Aboveground - in contact with impervious barrier", "Aboveground (impervious barrier)", Tank.Location,ignore.case = F, fixed = T)) %>% 
+    mutate(Tank.Location = gsub("Underground including vaulted with no access for inspection", "Underground (no access)", Tank.Location,ignore.case = F, fixed = T)) %>% 
+    mutate(Tank.Location = gsub("Aboveground - in contact with soil", "Aboveground (soil contact)", Tank.Location,ignore.case = F, fixed = T)) %>% 
+    mutate(Tank.Location = gsub("Aboveground on saddles, legs, stilts, rack or cradle"  ,"Aboveground (no ground contact)", Tank.Location,ignore.case = F, fixed = T)) %>%
+    mutate(Tank.Location = gsub("Aboveground in Subterranean vault with access for inspections", "Aboveground (subterranean, with access)", Tank.Location,ignore.case = F, fixed = T)) %>% 
+    mutate(Tank.Location = gsub("Tank with 10% or more below ground", "Tank (>10% below ground)", Tank.Location,ignore.case = F, fixed = T)) %>% 
+    mutate(Locality = gsub("new york city", "new york", Locality,ignore.case = F, fixed = T)) %>% 
+    mutate(County = gsub("New York City", "New York", County ,ignore.case = F, fixed = T))
 ```
 
 ```{r}
-vec = c("bronx","new york city", "bronx city")
-caps = Vectorize(Caps)
-
-vec = vec %>% caps()
-v = storage$Locality %>% caps()
-
-```
-```{r}
-str(vec)
-attributes(vec)
-vec[names]
+storage_clean = clean_storage(storage_clean)
 ```
 
-
-
-```{r}
-storage$Locality %>% mutate(Locality = caps(Locality))
-```
 
 ```{r}
 storage = storage %>% 
@@ -46,7 +120,12 @@ storage = storage %>%
 ```
 
 ```{r}
-storage = storage %>% 
+source('clean.R')
+```
+
+
+```{r}
+storage_clean = storage_clean %>% 
   mutate(Tank.Type = gsub("Missing Code in Old Data - Must be fixed", "Missing Code", Tank.Type,ignore.case = F, fixed = T)) %>% 
   mutate(Tank.Type = gsub("Steel/Carbon Steel/Iron", "Steel", Tank.Type,ignore.case = F, fixed = T))
 
@@ -92,103 +171,11 @@ storage = storage %>%
   mutate(Tank.Location = gsub("Aboveground in Subterranean vault with access for inspections", "Aboveground (subterranean, with access)", Tank.Location,ignore.case = F, fixed = T)) %>% 
   mutate(Tank.Location = gsub("Tank with 10% or more below ground", "Tank (>10% below ground)", Tank.Location,ignore.case = F, fixed = T)) %>% 
   mutate(Locality = gsub("new york city", "new york", Locality,ignore.case = F, fixed = T)) %>% 
-  mutate(County.Name = gsub("New York City", "New York", County.Name ,ignore.case = F, fixed = T))
-
-```
-
-```{r}
-storage = storage %>% mutate(Rank = percent_rank(Capacity.in.Gallons))
-```
-
-
-
-```{r}
-write_csv(storage,'./data/storage_clean.csv')
-```
-
-```{r}
-top5Chems = storage %>% 
-  group_by(Material.Name) %>% 
-  summarise(total = sum(Capacity.in.Gallons)) %>% 
-  top_n(5,total)
-
-storageFiltered = semi_join(storage, top5Chems, by = 'Material.Name')
-
-storageFiltered %>% 
-  ggplot(aes(x=reorder(Site.Type.Name,Capacity.in.Gallons, function(x) sum(x)), y=Capacity.in.Gallons)) + 
-  geom_col(aes(fill=Material.Name)) +
-  labs(title='Total Capacity by Site',
-       x='Sites',
-       y='Capacity in Gallons') +
-  scale_fill_brewer(palette='Set1') +
-  coord_flip() + 
-  theme_bw() +
-  theme(legend.key=element_blank())
-
-```
-
-```{r}
-storageFiltered %>% 
-  ggplot(aes(x=reorder(Tank.Location,Capacity.in.Gallons, function(x) sum(x)), y=Capacity.in.Gallons)) + 
-  geom_col(aes(fill=Material.Name)) +
-  labs(title='Total Capacity by Tank Location',
-       x='Sites',
-       y='Capacity in Gallons') +
-  scale_fill_brewer(palette='Set1') +
-  coord_flip() + 
-  theme_bw() +
-  theme(legend.key=element_blank())
-```
-
-```{r}
-```
-
-
-```{r}
-
-storageFiltered %>% 
-  ggplot(aes(x=reorder(Material.Name,Capacity.in.Gallons, function(x) sum(x)), y=Capacity.in.Gallons)) + 
-  geom_col() +
-  labs(title='Total Capacity by Material',
-       x='Sites',
-       y='Capacity in Gallons') +
-  scale_fill_brewer(palette='Set1') +
-  coord_flip() + 
-  theme_bw() +
-  theme(legend.key=element_blank())
-```
-
-
-```{r}
-topChems = storage %>% 
-  group_by(Material.Name) %>% 
-  summarise(total = sum(Capacity.in.Gallons)) %>% 
-  slice(20,total)
-
-storageFiltered = semi_join(storage, topChems, by = 'Material.Name')
-```
-
-
-```{r}
-storage
+  mutate(County = gsub("New York City", "New York", County ,ignore.case = F, fixed = T))
 
 ```
 
 
-```{r}
-
-storage %>% 
-  filter(Material.Name=="chlorine") %>% 
-  group_by(Install.Date) %>% 
-  summarise(sum_ = sum(Capacity.in.Gallons)) %>% 
-  bind_rows(closed) %>% 
-  arrange(Install.Date) %>% 
-  mutate(cumsum_ = cumsum(sum_))
-```
-
-```{r}
-total
-```
 
 
 ```{r}
@@ -287,9 +274,9 @@ storage %>%
 options(repr.plot.width = 14, repr.plot.height = 200)
 storage %>% 
   filter(Material.Name == material_name) %>% 
-  group_by(County.Name) %>% 
+  group_by(County) %>% 
   summarise(total = log(sum(Capacity.in.Gallons))) %>% 
-  ggplot(aes(x = reorder(County.Name,total), y = total)) +
+  ggplot(aes(x = reorder(County,total), y = total)) +
   geom_point() +
   coord_flip()
 ```
@@ -307,6 +294,72 @@ storage %>%
 
 
 ```{r}
+equitystats = read_csv('../data/equitystats_2004.csv')
+
+```
+```{r}
+deaths = read_csv('../data/deaths_1957.csv')
+```
+```{r}
+str(deaths)
+```
+
+
+```{r}
+mortgages = read_csv('../data/mortgages_census.csv')
+```
+
+```{r}
+str(mortgages)
+```
+
+```{r}
+spills_byDEC = spills %>% 
+  mutate(Year = lubridate::year(`Spill Date`)) %>% 
+  filter(`Report Lag` > 0 & `Case Lag` > 0 & `Report Lag` < 1e3 & `Case Lag` < 1e3) %>% 
+  group_by(Year,DEC.Region, County) %>% 
+  summarise(Report.Lag = median(`Report Lag`), Case.Lag = median(`Case Lag`), Spills = n())
+  
+```
+
+```{r}
+spills_byDEC %>% 
+  filter(DEC.Region == '1')
+
+```
+
+```{r}
+spills_DEC_year = spills_byDEC %>%
+  group_by(Year, DEC.Region) %>% 
+  summarise(Report.Lag = mean(Report.Lag), Case.Lag=mean(Case.Lag), Spills = mean(Spills)) 
+  
+```
+
+```{r}
+spills_DEC_year %>% 
+  filter(DEC.Region=='5') %>% 
+  ggplot(aes(Year, Case.Lag)) +geom_path()
+```
+
+```{r}
+spills %>% select(Material, Quantity) %>% arrange(desc(Quantity))
+```
+
+```{r}
+spills %>% 
+  mutate(month = lubridate::floor_date(`Spill Date`, 'month')) %>% 
+  group_by(`Close Date`,month,`Spill Date`) %>%
+  tally() %>% 
+  summarise(total_month = sum(n)) %>% 
+  mutate(cumsum = cumsum(total_month))
+  
+  
+#%>% 
+  #summarise(cumsum_ = cumsum(n()))
+```
+
+```{r}
+hpi = read_csv('../../HPI_master.csv')
 
 ```
 
