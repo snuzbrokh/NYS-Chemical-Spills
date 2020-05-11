@@ -168,11 +168,14 @@ function(input, output, session) {
             filter(County %in% input$county_select) %>% 
             filter(Material.Family %in% input$county_material_family_select) %>% 
             group_by(Material.Family %in% input$county_material_family_select) %>% 
-            ggplot(aes(Material.Family,log(Quantity))) +
-            geom_violin(scale="area") +
-            stat_summary(fun.data=mean_sdl, mult=1,geom="pointrange", color="purple") +
-            labs(x = "Log of Total Spilled", y='') +
-            theme(axis.text.x = element_text(size = 8, angle = 30))
+            ggplot(aes(log(Quantity))) +
+            geom_density(aes(fill=factor(Material.Family)), alpha=0.3, position='fill') +
+            #stat_summary(fun.data=mean_sdl, mult=1,geom="pointrange", color="purple") +
+            labs(x = "Log of Total Spilled", y='% Total', fill="Material Family")+
+            #scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
+            theme(axis.text.x = element_text(size = 8, angle = 30),
+                  legend.position = 'bottom')
+        
     })
     
     observeEvent(input$material_family_select, {

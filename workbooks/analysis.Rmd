@@ -464,10 +464,12 @@ spills %>%
 ```{r}
 offenders = storage %>% 
   inner_join(spills, by=c('Facility.Name','Locality','County','DEC.Region')) %>% 
+  filter(Quantity.y > 0) %>% 
   select(Facility.Name,Locality,County,Quantity.x,Quantity.y, `Case Lag`) %>% 
+  filter(`Case Lag` > 0 & `Case Lag` < 2e3) %>% 
   group_by(Facility.Name) %>% 
   filter(`Case Lag` > 0 & `Case Lag` < 1e3) %>% 
-  summarise(tank_cap = sum(Quantity.x), spill_volume = sum(Quantity.y), num_spills = n(), case.lag = median(`Case Lag`)) %>%
+  summarise(tank_cap = median(Quantity.x), spill_volume = sum(Quantity.y), num_spills = n(), case.lag = median(`Case Lag`)) %>%
   arrange(desc(spill_volume)) %>% 
   slice(1:20) 
 ```

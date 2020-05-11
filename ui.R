@@ -112,7 +112,7 @@ bootstrapPage(
                               options = list(`actions-box` = TRUE, 
                                              `data-live-search` = TRUE,
                                              inline = TRUE),
-                              multiple = TRUE),
+                              multiple = FALSE),
                   pickerInput("county_select", "County:",   
                               choices = NULL, 
                               selected = NULL,
@@ -146,7 +146,7 @@ bootstrapPage(
              "Analysis",
              sidebarLayout(
                sidebarPanel(
-                 span(tags$i(h3("Investigation of Responsiveness of DEC Regional Offices to Chemical Spills")), style="color:#045a8d"),
+                 span(tags$i(h3("DEC Regional Responsiveness to Chemical Spills")), style="color:#045a8d"),
                  
                  
                  sliderInput("result_range_analysis", "Number of Results:", 
