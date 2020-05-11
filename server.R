@@ -30,6 +30,8 @@ function(input, output, session) {
         
         
         isolate({
+            if (nrow(facilityInBounds()) == 0)
+                return(NULL)
             data = facilityInBounds()
             # domain = filteredData() %>% unique() %>% n_distinct()
             # 

@@ -61,7 +61,8 @@ bootstrapPage(
                                       top = 120, left = 40, width = "auto", fixed=TRUE,
                                       draggable = TRUE, height = "auto",
                                       
-                                      checkboxGroupInput("site-status", 
+                                      style = "font-size: 16px !important;",
+                                      prettyCheckboxGroup("site-status", 
                                                          h4("Facility Status"), 
                                                          choices = list("Closed" = "Unregulated/Closed", 
                                                                         "Inactive" = "Inactive" , 
@@ -70,14 +71,14 @@ bootstrapPage(
                                                          inline = TRUE
                                                          ),
                                       
-                                      pickerInput("material_family_select", "Material Family:",   
+                                      pickerInput("material_family_select", h4("Material Family:"),   
                                                   choices = material_family, 
                                                   selected = c("Petroleum"),
                                                   options = list(`actions-box` = TRUE,
                                                                  inline = TRUE),
                                                   multiple = TRUE),
                                       pickerInput(
-                                        'material_name_select', 'Material', 
+                                        'material_name_select', h4('Material'), 
                                         choices = NULL, 
                                         options = list(`actions-box` = TRUE, 
                                                        `live-search` = TRUE,
@@ -85,12 +86,12 @@ bootstrapPage(
                                         selected = NULL,
                                         multiple = TRUE),
                                       
+                                      sliderInput("spill_range", h4("Spill Size Range (Gal):"), 
+                                                  min = 0, max = 8, step = 1, value = c(1,4)),
+                                      
                                       actionButton("show-facilities", "Show Facilities"),
                                       actionButton("show-spills", "Show Spills"),
-                                      actionButton("clear_map", "Clear Map"),
-                                      
-                                      sliderInput("spill_range", "Spill Size Range (Gal):", 
-                                                  min = 0, max = 8, step = 1, value = c(1,4))
+                                      actionButton("clear_map", "Clear Map")
                     )
                     )
            ),
