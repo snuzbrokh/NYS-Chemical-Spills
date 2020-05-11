@@ -243,6 +243,42 @@ function(input, output, session) {
         ggplotly(g) %>% layout(height = 1000, width = 700)
         
     })
+    
+    output$offenders_plot <- renderPlotly({
+        offenders = storage %>% 
+            inner_join(spills, by=c('Facility.Name','Locality','County','DEC.Region')) %>% 
+            filter(Material.Family.y %in% input$material_family_analysis_select) %>% 
+            filter(DEC.Region %in% input$dec_analysis_select) %>% 
+            filter(Source_ %in% input$source_select) %>% 
+            filter(Quantity.y > 0) %>% 
+            select(Facility.Name,Locality,County,Quantity.x,Quantity.y, `Case Lag`) %>% 
+            filter(`Case Lag` > 0 & `Case Lag` < 2e3) %>% 
+            group_by(Facility.Name) %>% 
+            summarise(Site.Capacity = median(Quantity.x),
+                      Spill.Volume = sum(Quantity.y), 
+                      Number.of.Spills = n(),
+                      Case.Lag = median(`Case Lag`)) %>%
+            arrange(desc(Case.Lag)) %>% 
+            slice(input$result_range_analysis[1]:input$result_range_analysis[2])
+        
+        g = offenders %>%
+            ggplot(aes(x = reorder(Facility.Name,Spill.Volume)), groups=2) +
+            geom_point(aes(y = Spill.Volume,
+                           text = paste0(round(Spill.Volume,0)," Gallons Spilled")), color = 'purple') +
+            geom_point(aes(y = Site.Capacity,
+                       text = paste0(round(Site.Capacity,0)," Gallons of Site Capacity")), color = 'blue') +
+            geom_col(aes(y=Case.Lag,
+                         text = paste0('Median Time of ',Case.Lag," Days to Close Case")), color = 'black', alpha=0.5) +
+            coord_flip() +
+            scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+                          labels = trans_format("log10", math_format(10^.x))) +
+            labs(x = '', y = 'Log of Total Volume') +
+            theme(axis.ticks.x=element_blank())
+        
+        ggplotly(g, tooltip = c("text")) %>%
+            layout(height = 1000, width = 1000)
+        
+    })
     # output$cumgrowth <- renderCachedPlot({
     #     if (input$`show-facilities` == 0)
     #         return()

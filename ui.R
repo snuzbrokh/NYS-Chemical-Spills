@@ -148,6 +148,10 @@ bootstrapPage(
                sidebarPanel(
                  span(tags$i(h3("Investigation of Responsiveness of DEC Regional Offices to Chemical Spills")), style="color:#045a8d"),
                  
+                 
+                 sliderInput("result_range_analysis", "Number of Results:", 
+                             min = 0, max = 100, value = c(0,10)),
+                 
                  pickerInput("time_unit_select", "Time Unit:",   
                              choices = c("Month","Quarter","HalfYear","Year"), 
                              selected = "Year",
@@ -162,7 +166,7 @@ bootstrapPage(
                              options = list(`actions-box` = TRUE, 
                                             `data-live-search` = TRUE,
                                             inline = TRUE),
-                             multiple = FALSE),
+                             multiple = TRUE),
                  
                  pickerInput("county_analysis_select", "County:",   
                              choices = NULL, 
@@ -189,7 +193,27 @@ bootstrapPage(
                ),
                mainPanel(
                  tabsetPanel(
-                   tabPanel("Regional Report Lag", plotlyOutput("analysis_plot"))
+                   
+                   tabPanel("Regional Report Lag", 
+                            
+                            plotlyOutput("analysis_plot")
+                            ),
+                   
+                   tabPanel("Worst Offenders by Spills", 
+                            
+                            # pickerInput("sort_offenders", "Sort By:",   
+                            #             choices = c('Site.Capacity',
+                            #                         'Spill.Volume',
+                            #                         'Number.of.Spills',
+                            #                         'Case.Lag'),
+                            #             selected = c('Spill.Volume'),
+                            #             options = list(`actions-box` = TRUE, 
+                            #                            `data-live-search` = TRUE,
+                            #                            inline = TRUE),
+                            #             multiple = FALSE),
+                            
+                            plotlyOutput("offenders_plot")
+                            )
                  )
              )
            )

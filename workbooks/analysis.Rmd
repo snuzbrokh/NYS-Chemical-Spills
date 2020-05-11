@@ -462,6 +462,39 @@ spills %>%
   
 ```
 ```{r}
+offenders = storage %>% 
+  inner_join(spills, by=c('Facility.Name','Locality','County','DEC.Region')) %>% 
+  select(Facility.Name,Locality,County,Quantity.x,Quantity.y, `Case Lag`) %>% 
+  group_by(Facility.Name) %>% 
+  filter(`Case Lag` > 0 & `Case Lag` < 1e3) %>% 
+  summarise(tank_cap = sum(Quantity.x), spill_volume = sum(Quantity.y), num_spills = n(), case.lag = median(`Case Lag`)) %>%
+  arrange(desc(spill_volume)) %>% 
+  slice(1:20) 
+```
 
+```{r}
+offenders %>% 
+  ggplot(aes(x = reorder(Facility.Name,spill_volume)), groups=2) +
+  geom_point(aes(y = spill_volume), color = 'purple') +
+  geom_point(aes(y = tank_cap), color = 'blue') +
+  geom_col(aes(y=case.lag), color = 'black', alpha=0.5) +
+  coord_flip() +
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+                          labels = trans_format("log10", math_format(10^.x))) +
+  labs(y = 'Log of Total Volume')
+```
+
+```{r}
+offenders_num = offenders %>% select(-Facility.Name)
+cor(offenders_num, method = "pearson", use = "complete.obs")
+
+```
+```{r}
+offenders
+```
+
+```{r}
+offenders %>% 
+  ggplot(aes(x=tank_cap,y=num_spills)) + geom_point()
 ```
 

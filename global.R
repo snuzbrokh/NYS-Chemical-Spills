@@ -98,7 +98,7 @@ county_spills = function(spills) {
 spill_sources = function(spills) {
   
   font <- list(
-    size = 20,
+    size = 14,
     color = "white"
   )
   
