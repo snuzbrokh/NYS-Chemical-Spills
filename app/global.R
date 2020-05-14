@@ -17,10 +17,12 @@ spills <- read_csv('./data/spills_clean.csv')
 # Combine bulk facility chemical list with spill data
 # to look only at chemicals that are in the storage dataset
 
+storage_and_spills = storage %>% 
+  inner_join(spills, by=c('Facility.Name','County','DEC.Region'), suffix=c(".facility",".spill"))
+
 storage = storage %>% 
-  semi_join(spills, by = 'Material')
-spills = spills %>% 
-  semi_join(storage, by = 'Material')
+  semi_join(spills, by=c('Facility.Name','County','DEC.Region'))
+
 
 # Read in Latitude and Longitude (jittered)
 storage$Lat = jitter(storage$Lat)
@@ -34,15 +36,16 @@ spills$Lon = jitter(spills$Lon, amount =0.05)
 # spills$DEC.Region = as.factor(spills_clean$DEC.Region)
 
 # Format Choices
-materials = storage$Material %>% unique() %>% sort()
-material_family = storage$`Material.Family` %>% unique() %>% sort()
+materials = spills$Material %>% unique() %>% sort()
+material_family = spills$`Material.Family` %>% unique() %>% sort()
+sources = spills$Source_ %>% unique() %>% sort()
+spill_counties = spills$County %>% unique() %>% sort()
+
 sites = storage$Site.Type %>% unique() %>% sort()
 localities = storage$Locality %>% unique() %>% sort()
 tank_locations = storage$Tank.Location %>% unique()
 counties = storage$County %>% unique() %>% sort()
 decs = storage$`DEC.Region` %>% unique() %>% sort()
-sources = spills$Source_ %>% unique() %>% sort()
-spill_counties = spills$County %>% unique() %>% sort()
 
 ################ Interactive Map Plots ################ ################ ################ ##########
 colors = c('Greenhouse Gas'="#005300",

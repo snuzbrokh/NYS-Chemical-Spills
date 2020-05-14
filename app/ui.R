@@ -73,7 +73,7 @@ bootstrapPage(
                                       
                                       pickerInput("material_family_select", h4("Material Family:"),   
                                                   choices = material_family, 
-                                                  selected = c("Petroleum"),
+                                                  selected = material_family,
                                                   options = list(`actions-box` = TRUE,
                                                                  inline = TRUE),
                                                   multiple = TRUE),
@@ -89,16 +89,21 @@ bootstrapPage(
                                       sliderInput("spill_range", h4("Spill Size Range (Gal):"), 
                                                   min = 0, max = 8, step = 1, value = c(1,4)),
                                       
+                                      sliderInput("time_range", h4("Time Range:"), 
+                                                  min = 1970, max = 2020, step = 1, value = c(2010,2020), sep=""),
+                                      
                                       actionButton("show-facilities", "Show Facilities"),
                                       actionButton("show-spills", "Show Spills"),
-                                      actionButton("clear_map", "Clear Map")
+                                      actionButton("clear_map", "Clear Map"),
+                                      
+                                      
                     )
                     )
            ),
            
            tabPanel
            (
-             "County Plots",
+             "Analysis",
               sidebarLayout(
                 sidebarPanel(
                   span(tags$i(h6("Investigation of chemical spills by County")), style="color:#045a8d"),
@@ -128,7 +133,7 @@ bootstrapPage(
                               options = list(`actions-box` = TRUE,
                                              inline = TRUE),
                               multiple = TRUE),
-                  plotlyOutput("violin")
+                  plotlyOutput("density")
                   
                 ),
                 mainPanel(
@@ -143,7 +148,7 @@ bootstrapPage(
            
            tabPanel
            (
-             "Analysis",
+             "DEC Responsiveness",
              sidebarLayout(
                sidebarPanel(
                  span(tags$i(h3("DEC Regional Responsiveness to Chemical Spills")), style="color:#045a8d"),

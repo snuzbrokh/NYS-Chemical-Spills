@@ -132,7 +132,7 @@ function(input, output, session) {
             filter(Material.Family %in% input$material_family_select) %>% 
             filter(Material %in% input$material_name_select) %>% 
             filter(Quantity <= 10^input$spill_range[2] & Quantity >= 10^input$spill_range[1]) %>% 
-            #filter(`Spill Date` <= input$spill_date[2] & `Spill Date` >= input$spill_date[1]) %>% 
+            filter(lubridate::year(`Spill Date`) <= input$time_range[2] & lubridate::year(`Spill Date`) >= input$time_range[1]) %>% 
             sample_n(., ifelse(n() < 2e3, n(), 2e3))
         
     })
@@ -162,29 +162,29 @@ function(input, output, session) {
             spill_sources()
     })
     
-    output$violin <- renderPlotly({
-        spills %>% 
-            filter(DEC.Region %in% input$dec_select) %>% 
-            filter(County %in% input$county_select) %>% 
-            filter(Material.Family %in% input$county_material_family_select) %>% 
-            group_by(Material.Family %in% input$county_material_family_select) %>% 
-            ggplot(aes(log(Quantity))) +
-            geom_density(aes(fill=factor(Material.Family)), alpha=0.3, position='fill') +
-            #stat_summary(fun.data=mean_sdl, mult=1,geom="pointrange", color="purple") +
-            labs(x = "Log of Total Spilled", y='% Total', fill="Material Family")+
-            #scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x)) +
-            theme(axis.text.x = element_text(size = 8, angle = 30),
-                  legend.position = 'bottom')
+    output$density <- renderPlotly({
         
+        if(input$`show-spills` == 0)
+            return()
+        isolate({
+            g = spillInBounds() %>% 
+                filter(Material %in% input$material_name_select) %>% 
+                group_by(Material %in% input$material_name_select) %>% 
+                ggplot(aes(log(Quantity))) +
+                geom_density(aes(fill=Material), alpha=0.3, position='fill') +
+                labs(x = "% Total Spilled by Quantity (log-scaled)", y='', fill="Material")
+            ggplotly(g) %>% config(displayModeBar = F)  %>%
+                layout(legend = list(orientation = "h", x = 0.3, y = -0.5))
+        })
     })
     
     observeEvent(input$material_family_select, {
-        choices = 
-            storage %>% 
+        choices =
+            spills %>%
             filter(Material.Family == input$material_family_select) %>%
-            select(Material) %>% 
-            unique() 
-        updatePickerInput(session = session, inputId = 'material_name_select', choices = sort(choices[[1]]), selected = sort(choices[[1]]))
+            select(Material) %>%
+            unique()
+        updatePickerInput(session = session, inputId = 'material_name_select', choices = sort(choices[[1]]))
     })
     
     observeEvent(input$dec_select, {
