@@ -243,7 +243,7 @@ function(input, output, session) {
             ggplot(aes(x = time_unit)) +
             geom_area(aes(y = Case.Lag), fill = 'brown', alpha = 0.5) +
             geom_area(aes(y=Spills), fill="purple", alpha=0.7)
-        ggplotly(g) %>% layout(height = 1000, width = 700)
+        ggplotly(g) %>% layout(height = 700, width = 700)
         
     })
     
@@ -279,7 +279,7 @@ function(input, output, session) {
             theme(axis.ticks.x=element_blank())
         
         ggplotly(g, tooltip = c("text")) %>%
-            layout(height = 1000, width = 1000)
+            layout(height = 700, width = 700)
         
     })
     # output$cumgrowth <- renderCachedPlot({

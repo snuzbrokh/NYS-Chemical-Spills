@@ -164,7 +164,15 @@ spills_clean %>%
   arrange(Locality) %>% 
   unique()
 ```
+```{r}
+storage %>% 
+  inner_join(spills, by=c('Facility.Name','County','DEC.Region'), suffix=c(".facility",".spill"))
+```
+```{r}
+storage %>% 
+  semi_join(spills, by=c('Facility.Name','County','DEC.Region'))
 
+```
 
 
 ```{r}
@@ -463,22 +471,21 @@ spills %>%
 ```
 ```{r}
 offenders = storage %>% 
-  inner_join(spills, by=c('Facility.Name','Locality','County','DEC.Region')) %>% 
+  inner_join(spills, by=c('Facility.Name','Locality','County','DEC.Region','Material')) %>% 
   filter(Quantity.y > 0) %>% 
-  select(Facility.Name,Locality,County,Quantity.x,Quantity.y, `Case Lag`) %>% 
+  select(DEC.Region,Facility.Name,Material,Locality,County,Tank.Location, Quantity.x,Quantity.y, `Case Lag`,Lat.x,Lon.x,`Spill Date`) %>% 
   filter(`Case Lag` > 0 & `Case Lag` < 2e3) %>% 
-  group_by(Facility.Name) %>% 
-  filter(`Case Lag` > 0 & `Case Lag` < 1e3) %>% 
-  summarise(tank_cap = median(Quantity.x), spill_volume = sum(Quantity.y), num_spills = n(), case.lag = median(`Case Lag`)) %>%
-  arrange(desc(spill_volume)) %>% 
-  slice(1:20) 
+  group_by(Tank.Location, `Spill Date`,DEC.Region, County,Locality,Facility.Name,Material) %>% 
+  #filter(`Case Lag` > 0 & `Case Lag` < 1e3) %>% 
+  summarise(spill_volume = sum(Quantity.y), num_spills = n(), case.lag = median(`Case Lag`)) %>%
+  arrange(desc(spill_volume))
 ```
 
 ```{r}
 offenders %>% 
+  slice(1:2) %>% 
   ggplot(aes(x = reorder(Facility.Name,spill_volume)), groups=2) +
   geom_point(aes(y = spill_volume), color = 'purple') +
-  geom_point(aes(y = tank_cap), color = 'blue') +
   geom_col(aes(y=case.lag), color = 'black', alpha=0.5) +
   coord_flip() +
   scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
@@ -487,8 +494,8 @@ offenders %>%
 ```
 
 ```{r}
-offenders_num = offenders %>% select(-Facility.Name)
-cor(offenders_num, method = "pearson", use = "complete.obs")
+offenders_num = offenders %>% select(spill_volume, num_spills, case.lag)
+cor(offenders_num, method = "pearson" )
 
 ```
 ```{r}
@@ -497,6 +504,46 @@ offenders
 
 ```{r}
 offenders %>% 
-  ggplot(aes(x=tank_cap,y=num_spills)) + geom_point()
+  ggplot(aes(y=case.lag,x=log(spill_volume))) + geom_point() + facet_grid(Tank.Location~.)
 ```
+
+
+```{r}
+spills %>% 
+  group_by(Material.Family) %>% 
+  filter(`Case Lag` > 0) %>% 
+  ggplot(aes(x = `Case Lag`)) +
+  geom_histogram(bins=30) + facet_wrap(.~Material.Family, scales="free")
+
+```
+
+```{r}
+
+topPetrolSpills = spills %>% 
+  filter(Material.Family == 'Petroleum') %>% 
+  group_by(Material) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  slice(1:10)
+```
+
+```{r}
+spills %>% 
+  filter(Material.Family == 'Petroleum') %>% 
+  group_by(Material) %>% 
+  semi_join(topPetrolSpills, by='Material') %>% 
+  filter(`Report Lag` > 0) %>%
+  ggplot(aes(x = `Report Lag`)) +
+  geom_histogram(bins=30) + facet_wrap(.~Material, scales="free")
+```
+
+
+
+```{r}
+spills %>% 
+  group_by(Material.Family) %>% 
+  summarise(Report.Lag = median())
+```
+
+
 

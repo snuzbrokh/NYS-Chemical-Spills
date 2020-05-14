@@ -1,0 +1,13 @@
+name: NYS_Chemical_Spills
+title: NYS_Chemical_Spills
+username:
+account: datasnuz
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2284031
+bundleId: 3134888
+url: https://datasnuz.shinyapps.io/NYS_Chemical_Spills/
+when: 1589256389.15803
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: data/raw_data.csv|data/spills.csv

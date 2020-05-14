@@ -30,8 +30,8 @@ spills$Lat = jitter(spills$Lat, amount=0.05)
 spills$Lon = jitter(spills$Lon, amount =0.05)
 
 # Reclassify DEC Regions as Factors
-storage$DEC.Region = as.factor(storage_clean$DEC.Region)
-spills$DEC.Region = as.factor(spills_clean$DEC.Region)
+# storage$DEC.Region = as.factor(storage_clean$DEC.Region)
+# spills$DEC.Region = as.factor(spills_clean$DEC.Region)
 
 # Format Choices
 materials = storage$Material %>% unique() %>% sort()
