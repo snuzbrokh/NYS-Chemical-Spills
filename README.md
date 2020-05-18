@@ -1,4 +1,4 @@
-# NYS-Chemical-Storage
+# NYS-Chemical-Spills
 
 This is demonstration of the use of R Shiny for visualization and analysis of data on [chemical storage](https://data.ny.gov/Energy-Environment/Bulk-Storage-Facilities-in-New-York-State/pteg-c78n) 
 and [spill incidents](https://data.ny.gov/Energy-Environment/Spill-Incidents/u44d-k5fk) in NYS State.
