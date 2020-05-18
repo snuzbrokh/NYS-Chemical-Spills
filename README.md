@@ -10,7 +10,7 @@ The source and active maintainer of both datasets is the New York State Departme
 ## App
 
 ### Interactive Map
-The features a custom UI that encourages user exploration and investigation of chemical spills that have occurred in NY State. Each spill is drawn with a circle whose circle grows logaraithmically with the size of the spill. Spills and linked facilities can be selected by the material chemical involved and stored respectively. Spills can also be filtered by size and year of occurence. Hovering over a facility or a spill will bring up useful summary information. In addition, facilities can be grouped and toggled based on their status: closed, inactive, or active.
+The features a custom UI that encourages user exploration and investigation of chemical spills that have occurred in NY State. Each spill is drawn with a circle whose circle grows logarithmically with the size of the spill. Spills and linked facilities can be selected by the material chemical involved and stored respectively. Spills can also be filtered by size and year of occurence. Hovering over a facility or a spill will bring up useful summary information. In addition, facilities can be grouped and toggled based on their status: closed, inactive, or active.
 
 ### Analysis
 The analysis tab showcases a summary per DEC region, County, and Material Family of total chemical spills by volume. Significant for policymakers - the "Spill Sources" tab breaks down the total spills for the particular set of counties by source. Certain area in NY state with a lot of industrial activity will have a higher percentage of their spills coming from Industrial and Storage sources compared to a rural region - where most spills are from Vehicles or Municipal sources. 
