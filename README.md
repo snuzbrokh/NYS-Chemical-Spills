@@ -5,6 +5,8 @@ and [spill incidents](https://data.ny.gov/Energy-Environment/Spill-Incidents/u44
 
 The interactive app can be viewed [here](https://datasnuz.shinyapps.io/NYS_Chemical_Spills/).
 
+![pic](https://github.com/snuzbrokh/NYS-Chemical-Spills/blob/master/nyc_allspills.png)
+
 The source and active maintainer of both datasets is the New York State Department of Environmental Conservation (DEC). 
 
 ## App
